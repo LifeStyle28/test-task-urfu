@@ -1,0 +1,44 @@
+services:
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    restart: always
+    networks:
+      - my_network
+  api_server:
+    build: .
+    volumes:
+      - ./server:/server:z
+    command: sh -c "cd /server && uvicorn server:app --reload --host 0.0.0.0"
+    ports:
+      - "8000:8000"
+    restart: always
+    networks:
+      - my_network
+  telegram:
+    build: .
+    volumes:
+      - ./telegram/config.json:/app/telegram-test-api/config/config.json:z
+    ports:
+      - "9000:9000"
+    command: sh -c "cd /app/telegram-test-api && npm run start"
+    restart: always
+    networks:
+      - my_network
+  mailing_service:
+    build: .
+    volumes:
+      - ./src/:/service:z
+      - ./config/:/config:z
+    depends_on:
+      - mailhog
+      - api_server
+      - telegram
+    networks:
+    - my_network
+    command: sh -c "sleep 3 && python3.11 /service/mailing_service.py --config /config/config.yaml"
+
+networks:
+  my_network:
